@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Developer Guide: Library Management System</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px;
+            background-color: #fff;
+        }
+
+        h1 {
+            color: #2c3e50;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+        }
+
+        h2 {
+            color: #34495e;
+            margin-top: 30px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 5px;
+        }
+
+        h3 {
+            color: #2980b9;
+            margin-top: 25px;
+        }
+
+        code {
+            background-color: #f8f9fa;
+            padding: 2px 5px;
+            border-radius: 4px;
+            font-family: 'Consolas', monospace;
+            color: #e83e8c;
+        }
+
+        pre {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            border: 1px solid #e9ecef;
+            overflow-x: auto;
+        }
+
+        ul {
+            padding-left: 20px;
+        }
+
+        li {
+            margin-bottom: 5px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+
+        th,
+        td {
+            padding: 12px;
+            border: 1px solid #ddd;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+        }
+
+        .mermaid {
+            text-align: center;
+            margin: 20px 0;
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: monospace;
+        }
+
+        @media print {
+            body {
+                padding: 0;
+                max-width: 100%;
+            }
+
+            a {
+                text-decoration: none;
+                color: #000;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>👨‍💻 Developer Guide: Library Management System</h1>
+    <p>This document explains the technical architecture of the Library Management System. It is designed for developers
+        who want to understand how the code functions and links together.</p>
+
+    <h2>🔁 System Architecture</h2>
+    <p>The application is a <strong>Client-Side Single Page Application (SPA)</strong>. It relies on
+        <code>localStorage</code> for data persistence, meaning no server-side backend is required for it to run.
+    </p>
+
+    <h3>Data Flow Diagram</h3>
+    <div class="mermaid">
+        User [User Interaction] <br>
+        ↓ <br>
+        Router [LibraryApp (main.js)] <br>
+        ↓ <br>
+        Manager [Feature Manager (e.g. BooksManager)] <br>
+        ↓ <br>
+        DOM [DOM (index.html)] <br>
+        ↓ <br>
+        DB [LibraryData (data.js)] <br>
+        ↓ <br>
+        Storage [Browser LocalStorage]
+    </div>
+
+    <h2>📂 File Structure & Responsibilities</h2>
+
+    <h3>1. <code>index.html</code> (The Shell)</h3>
+    <ul>
+        <li><strong>Role</strong>: The single entry point.</li>
+        <li><strong>Key Components</strong>:
+            <ul>
+                <li><code>#loginPage</code>: The login form container (visible initially).</li>
+                <li><code>#mainApp</code>: The authenticated application container (hidden initially).</li>
+                <li><code>#contentArea</code>: The dynamic container where "Views" (Books, Dashboard, etc.) are
+                    injected.</li>
+            </ul>
+        </li>
+        <li><strong>Developer Note</strong>: All script tags are at the bottom. The order matters marginally, but
+            <code>main.js</code> must run last to initialize the app.
+        </li>
+    </ul>
+
+    <h3>2. <code>js/data.js</code> (The Data Layer)</h3>
+    <ul>
+        <li><strong>Role</strong>: Acts as a synchronous <strong>Database</strong> and <strong>ORM</strong>.</li>
+        <li><strong>Key Class</strong>: <code>LibraryData</code></li>
+        <li><strong>Pattern</strong>: Singleton (instantiated as global <code>libraryData</code>).</li>
+        <li><strong>Key Functions</strong>:
+            <ul>
+                <li><code>_initData()</code>: Loads data from <code>localStorage</code> or seeds default data if empty.
+                </li>
+                <li><code>_save()</code>: Persists the current state to <code>localStorage</code>.</li>
+                <li><code>getBooks()</code>, <code>getUsers()</code>: Returns arrays of objects (like SQL
+                    <code>SELECT</code>).
+                </li>
+                <li><code>addBook()</code>, <code>updateLoan()</code>: Modifies arrays and triggers
+                    <code>_save()</code>.
+                </li>
+            </ul>
+        </li>
+    </ul>
+
+    <h3>3. <code>js/main.js</code> (The Controller)</h3>
+    <ul>
+        <li><strong>Role</strong>: Application Orchestrator and Router.</li>
+        <li><strong>Key Class</strong>: <code>LibraryApp</code></li>
+        <li><strong>Key Functions</strong>:
+            <ul>
+                <li><code>constructor()</code>: Binds global navigation events.</li>
+                <li><code>loadPage(pageId)</code>:
+                    <ol>
+                        <li>Updates the sidebar active state.</li>
+                        <li>Hides current view.</li>
+                        <li>Checks <code>this.managers[pageId]</code>. If missing, instantiates it (Lazy Loading).</li>
+                        <li>Calls <code>manager.init()</code>.</li>
+                    </ol>
+                </li>
+                <li><code>init()</code>: Checks authentication state. If logged out, shows Login; if logged in, loads
+                    Dashboard.</li>
+            </ul>
+        </li>
+    </ul>
+
+    <h3>4. <code>js/[module].js</code> (The Feature Managers)</h3>
+    <ul>
+        <li><strong>Files</strong>: <code>books.js</code>, <code>users.js</code>, <code>authors.js</code>,
+            <code>loans.js</code>, <code>categories.js</code>, <code>dashboard.js</code>.
+        </li>
+        <li><strong>Pattern</strong>: All follow a standardized <strong>Manager Pattern</strong>.</li>
+        <li><strong>Key Components</strong> (Example: <code>BooksManager</code>):
+            <ul>
+                <li><strong>State</strong>: <code>this.currentPage</code>, <code>this.searchTerm</code>,
+                    <code>this.filters</code>.
+                </li>
+                <li><strong><code>init()</code></strong>: Called by <code>main.js</code> when the page loads. Triggers
+                    <code>renderBooks()</code>.
+                </li>
+                <li><strong><code>renderBooks()</code></strong>:
+                    <ol>
+                        <li>Fetches data from <code>libraryData</code>.</li>
+                        <li>Filters and sorts data in memory.</li>
+                        <li>Generates HTML Template String (<code>innerHTML</code>).</li>
+                        <li>Injects into DOM.</li>
+                        <li>Calls <code>attachTableEventListeners()</code>.</li>
+                    </ol>
+                </li>
+                <li><strong><code>attachTableEventListeners()</code></strong>:
+                    <ul>
+                        <li>Implements <strong>Event Delegation</strong>.</li>
+                        <li>Attaches a single <code>click</code> listener to the table body.</li>
+                        <li>Intercepts clicks on elements with <code>class="action-btn"</code>.</li>
+                        <li>Routes actions based on <code>data-action</code> (e.g., "delete", "edit") and
+                            <code>data-id</code>.
+                        </li>
+                    </ul>
+                </li>
+            </ul>
+        </li>
+    </ul>
+
+    <h2>🔗 Key Interactions Explained</h2>
+
+    <h3>How "Add Book" Works</h3>
+    <ol>
+        <li><strong>User Clicks Button</strong>: Button has ID <code>#addBookBtn</code>.</li>
+        <li><strong>Listener Fires</strong>: <code>BooksManager</code> listens for this ID.</li>
+        <li><strong>Modal Opens</strong>: <code>showAddBookModal()</code> creates a Bootstrap Modal with a form.</li>
+        <li><strong>Submission</strong>: Form submit event is caught.</li>
+        <li><strong>Data Update</strong>: <code>libraryData.addBook({...})</code> is called.
+            <ul>
+                <li><code>libraryData</code> pushes to <code>this.books</code> array.</li>
+                <li><code>libraryData</code> saves to <code>localStorage</code>.</li>
+            </ul>
+        </li>
+        <li><strong>UI Refresh</strong>: <code>BooksManager.renderBooks()</code> is called to re-draw the table with the
+            new book.</li>
+    </ol>
+
+    <h2>🔬 Deep Dive: Unique Code Features</h2>
+
+    <h3>1. Robust Event Delegation</h3>
+    <p>Instead of attaching thousands of event listeners (one for every button), we use <strong>Event
+            Delegation</strong>. This is more performance-friendly and "robust" because it works even for rows added
+        dynamically after the page loads.</p>
+    <pre><code>// js/books.js (Example)
+tableBody.addEventListener('click', (e) => {
+    // 1. Find the closest button that was clicked
+    const btn = e.target.closest('.action-btn');
+    if (!btn) return;
+
+    // 2. Read the "Instructions" from the HTML
+    const action = btn.dataset.action; // e.g., "delete"
+    const id = parseInt(btn.dataset.id); // e.g., 42
+
+    // 3. Execute the correct function
+    switch (action) {
+        case 'delete': this.deleteBook(id); break;
+        case 'edit':   this.editBook(id); break;
+    }
+});</code></pre>
+
+    <h3>2. Dynamic Data Searching</h3>
+    <p>The <code>LibraryData</code> class acts like an in-memory SQL database. All searches happen instantly on the
+        client side without server round-trips.</p>
+    <pre><code>// js/data.js
+getFilteredAndSortedBooks() {
+    let books = [...libraryData.getBooks()];
+
+    // Filter Logic
+    if (this.searchTerm) {
+        books = books.filter(book => 
+            book.title.toLowerCase().includes(this.searchTerm) ||
+            book.author.toLowerCase().includes(this.searchTerm)
+        );
+    }
+
+    // Sort Logic
+    books.sort((a, b) => {
+        return a[this.sortBy] > b[this.sortBy] ? 1 : -1;
+    });
+
+    return books;
+}</code></pre>
+
+    <h3>3. Chart.js Integration</h3>
+    <p>The dashboard isn't static; it calculates live statistics. The <code>initializeCharts</code> function transforms
+        raw array data into visual datasets.</p>
+    <pre><code>// js/dashboard.js
+const categoryData = libraryData.getBooksByCategory();
+// Returns: { "Fiction": 10, "Science": 5 }
+
+new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+        labels: Object.keys(categoryData), // ["Fiction", "Science"]
+        datasets: [{
+            data: Object.values(categoryData), // [10, 5]
+            backgroundColor: [...]
+        }]
+    },
+    options: { maintainAspectRatio: false } // Crucial for responsiveness
+});</code></pre>
+
+    <h3>4. Client-Side Export (CSV/PDF)</h3>
+    <p>We generate downloadable files purely in the browser using the <code>Blob</code> API. No server is involved.</p>
+    <pre><code>// js/loans.js
+// 1. Create a giant string of Comma-Separated Values
+let csv = 'Book Title,User Name,Loan Date\n';
+loans.forEach(loan => {
+    csv += `"${loan.bookTitle}","${loan.userName}","${loan.loanDate}"\n`;
+});
+
+// 2. Convert string to a "File" (Blob)
+const blob = new Blob([csv], { type: 'text/csv' });
+
+// 3. Create a fake "Download Link" and click it programmatically
+const url = window.URL.createObjectURL(blob);
+const a = document.createElement('a'); 
+a.href = url;
+a.download = 'loans_export.csv';
+a.click(); // Trigger download</code></pre>
+
+    <h2>🛠 Developer Cheat Sheet</h2>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Function</th>
+                <th>Located In</th>
+                <th>Purpose</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><code>loadPage(id)</code></td>
+                <td><code>main.js</code></td>
+                <td>Switches the visible screen.</td>
+            </tr>
+            <tr>
+                <td><code>attachTableEventListeners()</code></td>
+                <td><code>*.js</code></td>
+                <td>Connects buttons to code using Event Delegation.</td>
+            </tr>
+            <tr>
+                <td><code>_save()</code></td>
+                <td><code>data.js</code></td>
+                <td>Writes memory to browser storage.</td>
+            </tr>
+            <tr>
+                <td><code>renderPagination()</code></td>
+                <td><code>*.js</code></td>
+                <td>Generates the Next/Prev buttons.</td>
+            </tr>
+        </tbody>
+    </table>
+
+</body>
+
+</html>
